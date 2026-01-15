@@ -1,0 +1,17 @@
+{
+  "name": "rifa-app",
+  "version": "1.0.0",
+  "description": "App de rifas con Express y SQLite3",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "sqlite3": "^5.1.7"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

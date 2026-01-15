@@ -7,16 +7,22 @@ const app = express();
 app.use(express.json());
 app.use(express.static('.')); // Sirve el index.html
 
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'rifa.db');
+
 // Configuración de la base de datos
-const db = new sqlite3.Database('./rifa.db', (err) => {
-    if (err) console.error("Error al abrir DB", err);
-    db.run(`CREATE TABLE IF NOT EXISTS participantes (
-        id TEXT PRIMARY KEY,
-        nombre TEXT,
-        telefono TEXT,
-        status TEXT,
-        cobrador TEXT
-    )`);
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error("Error al abrir DB", err);
+    } else {
+        console.log("Conectado exitosamente a SQLite en:", dbPath);
+        db.run(`CREATE TABLE IF NOT EXISTS participantes (
+            id TEXT PRIMARY KEY,
+            nombre TEXT,
+            telefono TEXT,
+            status TEXT,
+            cobrador TEXT
+        )`);
+    }
 });
 
 // Obtener todos los números

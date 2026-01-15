@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mapea la carpeta de datos para persistir el archivo .db
+      - ./database_data:/usr/src/app/data
+    environment:
+      - NODE_ENV=production
+      # Asegúrate de que tu app use esta ruta para la DB
+      - DATABASE_PATH=/usr/src/app/data/database.sqlite

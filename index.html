@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Rifa Pro - Gestión Compartida</title>
     <style>
-        :root { --libre: #f0f0f0; --pendiente: #ffd700; --pago: #4caf50; }
-        body { font-family: 'Segoe UI', sans-serif; background: #eef2f3; padding: 20px; text-align: center; }
+        :root { --libre: hsl(0, 0%, 94%); --pendiente: #ffd700; --pago: #4caf50; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f3; background-image: url('tarco.jpg'); background-size: cover; padding: 20px; text-align: center; }
         .grid-container { 
             display: grid; grid-template-columns: repeat(10, 1fr); 
             gap: 8px; max-width: 900px; margin: 20px auto; 
@@ -18,7 +18,7 @@
         .casilla:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .nro { font-weight: bold; font-size: 1.2em; }
         .info { font-size: 0.75em; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .status-libre { border-top: 5px solid #ccc; }
+        .status-libre { border-top: 5px solid #ccc; background: #ffffff94;}
         .status-pendiente { border-top: 5px solid var(--pendiente); background: #fffde7; }
         .status-pago { border-top: 5px solid var(--pago); background: #e8f5e9; }
         
@@ -35,11 +35,11 @@
     </style>
 </head>
 <body>
-
-    <h1>Gestión de Rifa (00-99)</h1>
-    <button class="btn-export" onclick="exportarCSV()">Descargar Reporte (Archivo)</button>
+    <h1>Rifa de Tarco (00-99)</h1>
 
     <div class="grid-container" id="grid"></div>
+
+    <button class="btn-export" onclick="exportarCSV()">Descargar Reporte (Archivo)</button>
 
     <div id="overlay" onclick="cerrarModal()"></div>
     <div id="modal">
