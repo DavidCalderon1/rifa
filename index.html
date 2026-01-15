@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Rifa Pro - Gestión Compartida</title>
+    <style>
+        :root { --libre: #f0f0f0; --pendiente: #ffd700; --pago: #4caf50; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f3; padding: 20px; text-align: center; }
+        .grid-container { 
+            display: grid; grid-template-columns: repeat(10, 1fr); 
+            gap: 8px; max-width: 900px; margin: 20px auto; 
+        }
+        .casilla { 
+            background: white; border: 1px solid #ddd; padding: 10px 5px; 
+            cursor: pointer; border-radius: 4px; transition: 0.2s;
+            min-height: 60px; display: flex; flex-direction: column; justify-content: center;
+        }
+        .casilla:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .nro { font-weight: bold; font-size: 1.2em; }
+        .info { font-size: 0.75em; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .status-libre { border-top: 5px solid #ccc; }
+        .status-pendiente { border-top: 5px solid var(--pendiente); background: #fffde7; }
+        .status-pago { border-top: 5px solid var(--pago); background: #e8f5e9; }
+        
+        /* Modal */
+        #modal, #overlay { display: none; position: fixed; z-index: 100; }
+        #overlay { top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); }
+        #modal { 
+            top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            background: white; padding: 20px; border-radius: 8px; width: 320px; 
+        }
+        input, select, button { width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; }
+        .btn-save { background: #2196f3; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn-export { background: #607d8b; color: white; width: auto; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Gestión de Rifa (00-99)</h1>
+    <button class="btn-export" onclick="exportarCSV()">Descargar Reporte (Archivo)</button>
+
+    <div class="grid-container" id="grid"></div>
+
+    <div id="overlay" onclick="cerrarModal()"></div>
+    <div id="modal">
+        <h2 id="m-titulo">Casilla</h2>
+        <input type="text" id="m-nombre" placeholder="Nombre del Participante">
+        <input type="text" id="m-telefono" placeholder="Teléfono/Nota">
+        <label>Estado de pago:</label>
+        <select id="m-status">
+            <option value="libre">Libre</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="pago">Pagado</option>
+        </select>
+        <label>Cobrado por:</label>
+        <select id="m-cobrador">
+            <option value="">- Seleccionar -</option>
+            <option value="David">David</option>
+            <option value="Tarquino">Tarquino</option>
+        </select>
+        <button class="btn-save" onclick="guardar()">Guardar Registro</button>
+    </div>
+
+    <script>
+        let rifaData = {};
+
+        async function cargarDatos() {
+            const res = await fetch('/api/rifa');
+            const data = await res.json();
+            rifaData = data;
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for(let i=0; i<100; i++) {
+                const id = i.toString().padStart(2, '0');
+                const d = rifaData[id] || { nombre: '', status: 'libre', cobrador: '' };
+                const div = document.createElement('div');
+                div.className = `casilla status-${d.status}`;
+                div.innerHTML = `<div class="nro">${id}</div>
+                                 <div class="info">${d.nombre}</div>
+                                 <div class="info" style="font-weight:bold">${d.cobrador ? '('+d.cobrador+')' : ''}</div>`;
+                div.onclick = () => abrirModal(id);
+                grid.appendChild(div);
+            }
+        }
+
+        let currentId = null;
+        function abrirModal(id) {
+            currentId = id;
+            const d = rifaData[id] || { nombre: '', telefono: '', status: 'libre', cobrador: '' };
+            document.getElementById('m-titulo').innerText = `Número ${id}`;
+            document.getElementById('m-nombre').value = d.nombre;
+            document.getElementById('m-telefono').value = d.telefono || '';
+            document.getElementById('m-status').value = d.status;
+            document.getElementById('m-cobrador').value = d.cobrador || '';
+            document.getElementById('modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        async function guardar() {
+            const payload = {
+                id: currentId,
+                nombre: document.getElementById('m-nombre').value,
+                telefono: document.getElementById('m-telefono').value,
+                status: document.getElementById('m-status').value,
+                cobrador: document.getElementById('m-cobrador').value
+            };
+            
+            await fetch('/api/rifa', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            cerrarModal();
+            cargarDatos();
+        }
+
+        function exportarCSV() {
+            let csv = "Numero,Nombre,Telefono,Estado,Cobrador\n";
+            for(let i=0; i<100; i++) {
+                const id = i.toString().padStart(2, '0');
+                const d = rifaData[id] || { nombre: '', telefono: '', status: 'libre', cobrador: '' };
+                csv += `${id},"${d.nombre}","${d.telefono}",${d.status},${d.cobrador}\n`;
+            }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'reporte_rifa.csv');
+            a.click();
+        }
+
+        cargarDatos();
+        // Recarga automática cada 30 segundos para ver cambios de otros usuarios
+        setInterval(cargarDatos, 30000);
+    </script>
+</body>
+</html>
