@@ -1,13 +1,21 @@
 version: '3.8'
 services:
-  app:
+  rifa-loteria:
     build: .
+    container_name: rifa_loteria_container
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     volumes:
       # Mapea la carpeta de datos para persistir el archivo .db
-      - ./database_data:/usr/src/app/data
+      - .:/usr/src/app
+      - ./data:/usr/src/app/data
+      - /usr/src/app/node_modules
     environment:
       - NODE_ENV=production
-      # Asegúrate de que tu app use esta ruta para la DB
-      - DATABASE_PATH=/usr/src/app/data/database.sqlite
+      - ADMIN_PASS=${ADMIN_PASS}
+      - DATABASE_PATH=/usr/src/app/data/rifa.db
+    restart: always
+# no toma los cambios inmediatamente, hay que reiniciar:
+# docker compose up -d --build

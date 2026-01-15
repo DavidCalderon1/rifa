@@ -18,7 +18,7 @@
         .casilla:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .nro { font-weight: bold; font-size: 1.2em; }
         .info { font-size: 0.75em; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .status-libre { border-top: 5px solid #ccc; background: #ffffff94;}
+        .status-libre { border-top: 5px solid #ccc; background: #ffffffc7;}
         .status-pendiente { border-top: 5px solid var(--pendiente); background: #fffde7; }
         .status-pago { border-top: 5px solid var(--pago); background: #e8f5e9; }
         
@@ -32,39 +32,152 @@
         input, select, button { width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; }
         .btn-save { background: #2196f3; color: white; border: none; font-weight: bold; cursor: pointer; }
         .btn-export { background: #607d8b; color: white; width: auto; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .valid-badge { font-size: 0.8em; color: #2196f3; }
+        .no-valid { opacity: 0.6; border-style: dashed !important; }
+        .admin-only { display: none; } /* Se mostrará con JS si es admin */
+        .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        /* Contenedor de estadísticas */
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-value { font-size: 1.5em; color: #2196f3; }
+
+        /* Ícono de advertencia para no validados */
+        .casilla { position: relative; } /* Necesario para posicionar el ícono dentro */
+
+        .warn-icon {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.8em;
+            background: #ff9800;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Estilo para casilla no validada (más sutil) */
+        .no-valid {
+            border: 2px dashed #ff9800 !important;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
-    <h1>Rifa de Jhon Tarquino</h1>
-    <h2>--- Para volver al ride ---</h2>
+    <div class="main-container">
+        <div class="nav-bar">
+            <button id="btn-login" class="btn-export" onclick="login()">Log In Admin</button>
+            <button id="btn-logout" class="btn-export" style="display:none; background:#f44336" onclick="logout()">Log Out</button>
+            <button class="admin-only btn-export" onclick="exportarCSV()">📊 Reporte</button>
+        </div>
 
-    <div class="grid-container" id="grid"></div>
+        <h1>Rifa de Jhon Tarquino</h1>
+        <h2>--- Para volver al ride ---</h2>
 
-    <button class="btn-export" onclick="exportarCSV()">Descargar Reporte (Archivo)</button>
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span>Libres</span>
+                <span id="stat-libres" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Por Validar</span>
+                <span id="stat-pendientes" class="stat-value" style="color: #ff9800;">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Validados</span>
+                <span id="stat-validados" class="stat-value" style="color: #4caf50;">0</span>
+            </div>
+        </div>
+
+        <div class="grid-container" id="grid"></div>
+
+    </div>
 
     <div id="overlay" onclick="cerrarModal()"></div>
     <div id="modal">
         <h2 id="m-titulo">Casilla</h2>
-        <input type="text" id="m-nombre" placeholder="Nombre del Participante">
-        <input type="text" id="m-telefono" placeholder="Teléfono/Nota">
-        <label>Estado de pago:</label>
-        <select id="m-status">
-            <option value="libre">Libre</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="pago">Pagado</option>
-        </select>
-        <label>Cobrado por / Pagado a:</label>
-        <select id="m-cobrador">
-            <option value="">- Seleccionar -</option>
-            <option value="David">David</option>
-            <option value="Tarquino">Tarquino</option>
-        </select>
+        <div id="public-fields">
+            <label>Nombre del Participante:</label>
+            <input type="text" id="m-nombre">
+            <label>Teléfono de contacto:</label>
+            <input type="text" id="m-telefono">
+            <hr>
+            <label>Estado:</label>
+            <select id="m-status">
+                <option value="libre">Libre</option>
+                <option value="pendiente">Pendiente</option>
+                <option value="pago">Pagado</option>
+            </select>
+            <label>Cobrado por / Pagado a:</label>
+            <select id="m-cobrador">
+                <option value="">-</option>
+                <option value="David">David</option>
+                <option value="Tarquino">Tarquino</option>
+            </select>
+        </div>
+        <div class="admin-only" id="admin-fields">
+            <label>
+                <input type="checkbox" id="m-validado" style="width:auto"> Registro Validado
+            </label>
+        </div>
+
         <button class="btn-save" onclick="guardar()">Guardar Registro</button>
     </div>
 
     <script>
         let rifaData = {};
+        let isAdmin = false;
 
+        // Se ejecuta apenas carga la página
+        window.onload = async () => {
+            await checkAuth(); // Verifica si la cookie guardada es válida
+        };
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/check-auth');
+                const data = await res.json();
+                isAdmin = data.isAdmin;
+                
+                // Actualizamos la interfaz según el resultado
+                actualizarInterfazAdmin(isAdmin);
+            } catch (e) {
+                console.error("Error verificando sesión");
+            }
+        }
+
+        function actualizarInterfazAdmin(isAdmin) {
+            // Mostrar/Ocultar elementos según rol
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
+            document.getElementById('btn-login').style.display = isAdmin ? 'none' : 'block';
+            document.getElementById('btn-logout').style.display = isAdmin ? 'block' : 'none';
+        }
+
+        async function login() {
+            const pass = prompt("Contraseña de Administrador:");
+            if (!pass) return;
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ pass })
+            });
+            if (res.ok) checkAuth();
+            else alert("Contraseña incorrecta");
+        }
         async function cargarDatos() {
             const res = await fetch('/api/rifa');
             const data = await res.json();
@@ -75,28 +188,58 @@
         function renderGrid() {
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
+            // Contadores
+            let libres = 0, porValidar = 0, validados = 0;
+            
             for(let i=0; i<100; i++) {
                 const id = i.toString().padStart(2, '0');
-                const d = rifaData[id] || { nombre: '', status: 'libre', cobrador: '' };
+                const d = rifaData[id] || { nombre: '', status: 'libre', validado: 0 };
+                
+                // Lógica de contadores
+                if (d.status === 'libre') libres++;
+                else if (d.validado === 0) porValidar++;
+                else validados++;
+
                 const div = document.createElement('div');
-                div.className = `casilla status-${d.status}`;
-                div.innerHTML = `<div class="nro">${id}</div>
-                                 <div class="info">${d.nombre}</div>
-                                 <div class="info" style="font-weight:bold">${d.cobrador ? '('+d.cobrador+')' : ''}</div>`;
+                // Si no está validado y no está libre, añadimos clase 'no-valid'
+                const esNoValidado = d.status !== 'libre' && d.validado === 0;
+                div.className = `casilla status-${d.status} ${esNoValidado ? 'no-valid' : ''}`;
+                
+                // Insertamos el ícono ⚠️ si está pendiente de validación
+                const iconHtml = esNoValidado ? `<div class="warn-icon" title="Pendiente de validar">!</div>` : '';
+                
+                div.innerHTML = `
+                    ${iconHtml}
+                    <div class="nro">${id}</div>
+                    <div class="info">${d.nombre || '<span style="color:#ccc">Libre</span>'}</div>
+                    <div class="info" style="font-weight:bold">${d.cobrador ? '💰 '+d.cobrador : ''}</div>
+                `;
+                
                 div.onclick = () => abrirModal(id);
                 grid.appendChild(div);
             }
+
+            // Actualizar panel de estadísticas
+            document.getElementById('stat-libres').innerText = libres;
+            document.getElementById('stat-pendientes').innerText = porValidar;
+            document.getElementById('stat-validados').innerText = validados;
         }
 
         let currentId = null;
         function abrirModal(id) {
             currentId = id;
-            const d = rifaData[id] || { nombre: '', telefono: '', status: 'libre', cobrador: '' };
-            document.getElementById('m-titulo').innerText = `Número ${id}`;
-            document.getElementById('m-nombre').value = d.nombre;
+            const d = rifaData[id] || { nombre: '', telefono: '', status: 'libre', cobrador: '', validado: 0 };
+            
+            document.getElementById('m-titulo').innerText = `Número #${id}`;
+            document.getElementById('m-nombre').value = d.nombre || '';
             document.getElementById('m-telefono').value = d.telefono || '';
             document.getElementById('m-status').value = d.status;
             document.getElementById('m-cobrador').value = d.cobrador || '';
+
+            if (isAdmin) {
+                document.getElementById('m-validado').checked = d.validado === 1;
+            }
+
             document.getElementById('modal').style.display = 'block';
             document.getElementById('overlay').style.display = 'block';
         }
@@ -112,32 +255,29 @@
                 nombre: document.getElementById('m-nombre').value,
                 telefono: document.getElementById('m-telefono').value,
                 status: document.getElementById('m-status').value,
-                cobrador: document.getElementById('m-cobrador').value
+                cobrador: document.getElementById('m-cobrador').value,
+                validado: isAdmin ? document.getElementById('m-validado').value : 0 
             };
             
-            await fetch('/api/rifa', {
+            const res = await fetch('/api/rifa', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
-            });
+            });            
+            const data = await res.json();
             
-            cerrarModal();
-            cargarDatos();
+            if (res.status >= 400) {
+                alert("❌ " + (data.error || 'No tienes permiso para modificar este registro.'));
+            } else {
+                cerrarModal();
+                cargarDatos();
+            }
         }
 
         function exportarCSV() {
-            let csv = "Numero,Nombre,Telefono,Estado,Cobrador\n";
-            for(let i=0; i<100; i++) {
-                const id = i.toString().padStart(2, '0');
-                const d = rifaData[id] || { nombre: '', telefono: '', status: 'libre', cobrador: '' };
-                csv += `${id},"${d.nombre}","${d.telefono}",${d.status},${d.cobrador}\n`;
+            if (isAdmin) {
+                window.location.href = `/api/export`;
             }
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('href', url);
-            a.setAttribute('download', 'reporte_rifa.csv');
-            a.click();
         }
 
         cargarDatos();

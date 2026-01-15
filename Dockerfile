@@ -10,11 +10,16 @@ WORKDIR /usr/src/app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias (incluyendo sqlite3 y express)
-RUN npm install --production
+# Instalar dependencias
+RUN npm install && npm install -g nodemon
 
 # Copiar el resto del código
 COPY . .
+
+# Definir que se recibirá un argumento
+ARG ADMIN_PASS
+# Convertir ese argumento en una variable de entorno interna
+ENV ADMIN_PASS=$ADMIN_PASS
 
 # Crear carpeta para la base de datos y asignar permisos
 RUN mkdir -p /usr/src/app/data && chown -R node:node /usr/src/app/data
@@ -26,10 +31,10 @@ USER node
 EXPOSE 3000
 
 # Comando para iniciar
-CMD ["node", "server.js"]
+CMD ["nodemon", "server.js"]
 
 # Crear imagen
 # docker build -t express-sqlite .
 
 # Ejecutar contenedor
-# docker run --name rifa-loteria -d -p 20099:3000 -v /home/david/projects/rifa:/usr/src/app -v /usr/src/app/node_modules express-sqlite:latest
+# docker run --name rifa-loteria -d -p 20099:3000 --env-file .env -v /home/david/projects/rifa:/usr/src/app -v /usr/src/app/node_modules express-sqlite:latest

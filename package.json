@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "express": "^5.2.1",
+    "express-session": "^1.17.3",
     "sqlite3": "^5.1.7"
   },
   "engines": {
