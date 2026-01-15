@@ -3,6 +3,7 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const app = express();
+const port = process.env.PORT || 3000 
 
 app.use(express.json());
 app.use(express.static('.')); // Sirve el index.html
