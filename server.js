@@ -92,8 +92,7 @@ app.post('/api/rifa', (req, res) => {
 
 // Endpoint para descargar el reporte con seguridad
 app.get('/api/export', (req, res) => {
-    const isAdmin = req.session.isAdmin;
-    if (!isAdmin) {
+    if (!req.session.isAdmin) {
         return res.status(403).send("Acceso denegado");
     }
     db.all("SELECT * FROM participantes ORDER BY id ASC", [], (err, rows) => {
@@ -104,6 +103,50 @@ app.get('/api/export', (req, res) => {
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', 'attachment; filename=reporte.csv');
         res.send(csv);
+    });
+});
+
+app.get('/api/export-json', (req, res) => {
+    if (!req.session.isAdmin) return res.status(401).json({ error: "No autorizado" });
+
+    db.all("SELECT * FROM participantes", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: "Error al leer la base de datos" });
+
+        res.json(rows);
+    });
+});
+
+// Ruta para importar datos (SOLO ADMIN)
+app.post('/api/import', (req, res) => {
+    if (!req.session.isAdmin) return res.status(401).json({ error: "No autorizado" });
+
+    const datos = req.body; // Se espera un array de objetos [{id, nombre, status...}]
+
+    if (!Array.isArray(datos)) return res.status(400).json({ error: "Formato inválido" });
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        
+        const stmt = db.prepare(`
+            INSERT INTO participantes (id, nombre, telefono, status, cobrador, validado) 
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET 
+            nombre=excluded.nombre, telefono=excluded.telefono, 
+            status=excluded.status, cobrador=excluded.cobrador, validado=excluded.validado
+        `);
+
+        datos.forEach(p => {
+            stmt.run(p.id, p.nombre, p.telefono, p.status, p.cobrador, p.validado);
+        });
+
+        stmt.finalize((err) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: "Error al importar" });
+            }
+            db.run("COMMIT");
+            res.json({ success: true, count: datos.length });
+        });
     });
 });
 

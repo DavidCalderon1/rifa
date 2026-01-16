@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Rifa de Tarco - Para volver al ride</title>
     <style>
         :root { --libre: hsl(0, 0%, 94%); --pendiente: #ffd700; --pago: #4caf50; }
@@ -11,13 +12,30 @@
             gap: 8px; max-width: 900px; margin: 20px auto; 
         }
         .casilla { 
-            background: white; border: 1px solid #ddd; padding: 10px 5px; 
-            cursor: pointer; border-radius: 4px; transition: 0.2s;
-            min-height: 60px; display: flex; flex-direction: column; justify-content: center;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;            
         }
         .casilla:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .nro { font-weight: bold; font-size: 1.2em; }
-        .info { font-size: 0.75em; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .info { 
+            max-width: 110px;
+            max-height: 70px;
+            margin-bottom: 5px;
+            font-size: 0.75em;
+            color: #555;
+            /*word-wrap: break-word;*/
+            overflow: hidden;
+            text-overflow: ellipsis;
+            /*overflow-wrap: anywhere;*/
+        }
         .status-libre { border-top: 5px solid #ccc; background: #ffffffc7;}
         .status-pendiente { border-top: 5px solid var(--pendiente); background: #fffde7; }
         .status-pago { border-top: 5px solid var(--pago); background: #e8f5e9; }
@@ -27,7 +45,8 @@
         #overlay { top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); }
         #modal { 
             top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            background: white; padding: 20px; border-radius: 8px; width: 320px; 
+            background: white; padding: 20px; border-radius: 8px;
+            width: 400px; max-width: 90%;
         }
         input, select, button { width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; }
         .btn-save { background: #2196f3; color: white; border: none; font-weight: bold; cursor: pointer; }
@@ -35,7 +54,18 @@
         .valid-badge { font-size: 0.8em; color: #2196f3; }
         .no-valid { opacity: 0.6; border-style: dashed !important; }
         .admin-only { display: none; } /* Se mostrará con JS si es admin */
-        .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            gap: 10px;
+        }
+        .admin-buttons {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
         /* Contenedor de estadísticas */
         .stats-bar {
             display: flex;
@@ -75,6 +105,39 @@
             border: 2px dashed #ff9800 !important;
             opacity: 0.8;
         }
+
+        /* AJUSTES PARA CELULARES */
+        @media (max-width: 600px) {
+            #modal {
+                width: 80%;           /* Casi todo el ancho */
+                padding: 15px;        /* Menos espacio interno para ganar lugar */
+            }
+
+            #modal h2 {
+                font-size: 1.5rem;    /* Título más grande y legible */
+            }
+
+            #modal label {
+                font-size: 1.1rem;    /* Etiquetas más grandes para no forzar la vista */
+                display: block;
+                margin-bottom: 5px;
+            }
+
+            #modal input, #modal select {
+                font-size: 16px;      /* ¡TRUCO! 16px evita que iOS haga zoom automático al escribir */
+                width: 100%;
+                padding: 12px;        /* Botones e inputs más altos para el dedo */
+                margin-bottom: 15px;
+                box-sizing: border-box; /* Asegura que el padding no estire el input */
+            }
+
+            .btn-save, .btn-cancel {
+                width: 100%;          /* Botones de lado a lado para tocar fácil con el pulgar */
+                font-size: 1.2rem;
+                padding: 15px;
+                margin-top: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -82,7 +145,16 @@
         <div class="nav-bar">
             <button id="btn-login" class="btn-export" onclick="login()">Log In Admin</button>
             <button id="btn-logout" class="btn-export" style="display:none; background:#f44336" onclick="logout()">Log Out</button>
-            <button class="admin-only btn-export" onclick="exportarCSV()">📊 Reporte</button>
+            <div class="admin-only admin-buttons">
+                <button class="btn-export" onclick="exportarJSON()">
+                    📊 Descargar Respaldo
+                </button>            
+                <button class="btn-export" onclick="document.getElementById('import-input').click()" style="background: #607d8b">
+                    📥 Restaurar Respaldo
+                </button>
+                <input type="file" id="import-input" style="display:none" accept=".json" onchange="procesarArchivo(this)">
+                <button class="btn-export" onclick="exportarCSV()" style="background: #4caf50">📊 Reporte</button>
+            </div>
         </div>
 
         <h1>Rifa de Jhon Tarquino</h1>
@@ -95,11 +167,19 @@
             </div>
             <div class="stat-item">
                 <span>Por Validar</span>
-                <span id="stat-pendientes" class="stat-value" style="color: #ff9800;">0</span>
+                <span id="stat-por-validar" class="stat-value" style="color: #ff9800;">0</span>
             </div>
             <div class="stat-item">
                 <span>Validados</span>
                 <span id="stat-validados" class="stat-value" style="color: #4caf50;">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Pagados</span>
+                <span id="stat-pagados" class="stat-value" style="color: var(--pago);">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Pendientes</span>
+                <span id="stat-pendientes" class="stat-value" style="color: var(--pendiente)">0</span>
             </div>
         </div>
 
@@ -178,6 +258,25 @@
             if (res.ok) checkAuth();
             else alert("Contraseña incorrecta");
         }
+
+        async function logout() {
+            try {
+                const res = await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                if (res.ok) {
+                    isAdmin = false;
+                    actualizarInterfazAdmin(isAdmin);
+                    cargarDatos();                    
+                } else {
+                    alert("Error cerrando sesión")
+                }
+            } catch (e) {
+                console.error("Error cerrando sesión");
+            }
+        }
+
         async function cargarDatos() {
             const res = await fetch('/api/rifa');
             const data = await res.json();
@@ -189,7 +288,7 @@
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
             // Contadores
-            let libres = 0, porValidar = 0, validados = 0;
+            let libres = 0, porValidar = 0, validados = 0, pagados = 0, pendientes = 0;
             
             for(let i=0; i<100; i++) {
                 const id = i.toString().padStart(2, '0');
@@ -199,6 +298,8 @@
                 if (d.status === 'libre') libres++;
                 else if (d.validado === 0) porValidar++;
                 else validados++;
+                if (d.status === 'pendiente') pendientes++;
+                else if (d.status === 'pago') pagados++;
 
                 const div = document.createElement('div');
                 // Si no está validado y no está libre, añadimos clase 'no-valid'
@@ -211,8 +312,8 @@
                 div.innerHTML = `
                     ${iconHtml}
                     <div class="nro">${id}</div>
-                    <div class="info">${d.nombre || '<span style="color:#ccc">Libre</span>'}</div>
-                    <div class="info" style="font-weight:bold">${d.cobrador ? '💰 '+d.cobrador : ''}</div>
+                    <div class="info" style="font-weight:bold">${d.nombre || '<span style="color:#ccc">Libre</span>'}</div>
+                    <div class="info">${d.cobrador ? '💰 '+d.cobrador : ''}</div>
                 `;
                 
                 div.onclick = () => abrirModal(id);
@@ -221,8 +322,10 @@
 
             // Actualizar panel de estadísticas
             document.getElementById('stat-libres').innerText = libres;
-            document.getElementById('stat-pendientes').innerText = porValidar;
+            document.getElementById('stat-por-validar').innerText = porValidar;
             document.getElementById('stat-validados').innerText = validados;
+            document.getElementById('stat-pagados').innerText = pagados;
+            document.getElementById('stat-pendientes').innerText = pendientes;
         }
 
         let currentId = null;
@@ -256,7 +359,7 @@
                 telefono: document.getElementById('m-telefono').value,
                 status: document.getElementById('m-status').value,
                 cobrador: document.getElementById('m-cobrador').value,
-                validado: isAdmin ? document.getElementById('m-validado').value : 0 
+                validado: isAdmin ? document.getElementById('m-validado').checked : 0 
             };
             
             const res = await fetch('/api/rifa', {
@@ -278,6 +381,70 @@
             if (isAdmin) {
                 window.location.href = `/api/export`;
             }
+        }
+
+        async function exportarJSON() {
+            try {
+                const res = await fetch('/api/export-json');
+                if (!res.ok) throw new Error("No autorizado o error de servidor");
+
+                const datos = await res.json();
+                
+                // Convertimos el objeto a una cadena de texto JSON con formato (indentación de 2 espacios)
+                const dataStr = JSON.stringify(datos, null, 2);
+                
+                // Creamos un "Blob" (un archivo virtual en memoria)
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                
+                // Creamos un link temporal para forzar la descarga
+                const link = document.createElement('a');
+                const fecha = new Date().toISOString().split('T')[0]; // Ejemplo: 2026-01-15
+                
+                link.href = url;
+                link.download = `reporte_rifa_${fecha}.json`;
+                document.body.appendChild(link);
+                link.click();
+                
+                // Limpiamos
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+            } catch (err) {
+                alert("Error al exportar: " + err.message);
+            }
+        }
+
+        async function procesarArchivo(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    
+                    if (!confirm(`¿Estás seguro de importar ${json.length} registros? Esto sobrescribirá datos existentes.`)) return;
+
+                    const res = await fetch('/api/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(json)
+                    });
+
+                    if (res.ok) {
+                        alert("✅ Importación exitosa");
+                        cargarDatos(); // Refrescar cuadrícula
+                    } else {
+                        const err = await res.json();
+                        alert("❌ Error: " + err.error);
+                    }
+                } catch (err) {
+                    alert("❌ El archivo no es un JSON válido");
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Limpiar input para permitir cargar el mismo archivo luego
         }
 
         cargarDatos();
