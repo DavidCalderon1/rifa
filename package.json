@@ -10,7 +10,7 @@
   "dependencies": {
     "express": "^5.2.1",
     "express-session": "^1.17.3",
-    "sqlite3": "^5.1.7"
+    "mysql2": "^3.11.0"
   },
   "engines": {
     "node": ">=22.0.0"

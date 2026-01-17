@@ -15,7 +15,7 @@ services:
     environment:
       - NODE_ENV=production
       - ADMIN_PASS=${ADMIN_PASS}
-      - DATABASE_PATH=/usr/src/app/data/rifa.db
+      - DATABASE_URL=${DATABASE_URL}
     restart: always
 # no toma los cambios inmediatamente, hay que reiniciar:
 # docker compose up -d --build
